@@ -28,6 +28,7 @@ import {
 import { useLibraryStore } from "@/lib/store/library";
 import { useResume } from "@/lib/db/hooks";
 import { clearHistory } from "@/lib/db/dexie";
+import { ConfirmDialog } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 interface RemoteHit {
@@ -55,6 +56,7 @@ export function CommandPalette({
   const [q, setQ] = useState("");
   const [remote, setRemote] = useState<RemoteHit[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const entries = useLibraryStore((s) => s.entries);
   const resume = useResume(8);
@@ -309,15 +311,7 @@ export function CommandPalette({
               {resume && resume.length > 0 && (
                 <CommandItem
                   value="action clear-history"
-                  onSelect={() => {
-                    if (
-                      typeof window !== "undefined" &&
-                      window.confirm("Очистить историю просмотров?")
-                    ) {
-                      clearHistory();
-                      close();
-                    }
-                  }}
+                  onSelect={() => setShowClearDialog(true)}
                 >
                   <ActionIcon>
                     <Trash2 className="size-4" />
@@ -341,6 +335,15 @@ export function CommandPalette({
           </div>
         </Command>
       </div>
+      <ConfirmDialog
+        open={showClearDialog}
+        onOpenChange={setShowClearDialog}
+        title="Очистить историю просмотров?"
+        description="Это действие нельзя отменить."
+        confirmLabel="Очистить"
+        destructive
+        onConfirm={() => { clearHistory(); close(); setShowClearDialog(false); }}
+      />
     </div>
   );
 }

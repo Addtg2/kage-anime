@@ -5,6 +5,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BottomTabs } from "@/components/layout/bottom-tabs";
+import { KbdNav } from "@/components/kage/kbd-nav";
 
 // UI-латиница и цифры (логотип KAGE, метаданные)
 const grotesk = Space_Grotesk({
@@ -80,6 +81,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
         <Footer />
         <BottomTabs />
+        <KbdNav />
       </body>
     </html>
   );

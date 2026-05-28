@@ -9,6 +9,7 @@ import {
   Upload,
   User,
 } from "lucide-react";
+import { z } from "zod";
 
 import {
   useSettingsStore,
@@ -19,7 +20,19 @@ import { useHydrated } from "@/lib/store/use-hydrated";
 import { clearHistory, db } from "@/lib/db/dexie";
 import { useResume } from "@/lib/db/hooks";
 import { buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+
+const ImportSchema = z.object({
+  library: z.array(z.object({
+    status: z.enum(["watching", "planned", "completed", "dropped"]),
+    addedAt: z.number(),
+    anime: z.object({ id: z.string(), titleRu: z.string() }).passthrough(),
+  })).optional(),
+  settings: z.object({
+    preferredPlayer: z.enum(["auto", "kodik", "alloha"]),
+  }).optional(),
+});
 
 const PLAYER_OPTIONS: { id: PreferredPlayer; label: string; desc: string }[] = [
   { id: "auto", label: "Авто", desc: "Доступный источник выбирается сам" },
@@ -36,6 +49,7 @@ export function ProfileClient() {
   const resume = useResume(1000);
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<"library" | "history" | null>(null);
 
   const libraryCount = useMemo(
     () => (hydrated ? Object.keys(entries).length : 0),
@@ -75,27 +89,31 @@ export function ProfileClient() {
   async function importData(file: File) {
     try {
       const text = await file.text();
-      const data = JSON.parse(text) as {
-        library?: { anime: unknown; status: string; addedAt: number }[];
-        history?: { animeId: string; anime: unknown; episode: number; updatedAt: number }[];
-      };
+      const raw = JSON.parse(text);
+      const result = ImportSchema.safeParse(raw);
+      if (!result.success) {
+        flash("Ошибка импорта — неверный формат файла");
+        return;
+      }
+      const data = result.data;
       const setStatus = useLibraryStore.getState().setStatus;
       const d = db();
       let imported = 0;
-      if (Array.isArray(data.library)) {
+      if (data.library) {
         for (const e of data.library) {
-          if (e && typeof e === "object" && "anime" in e && "status" in e) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setStatus(e.anime as any, e.status as any);
-            imported += 1;
-          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setStatus(e.anime as any, e.status as any);
+          imported += 1;
         }
       }
-      if (d && Array.isArray(data.history)) {
-        for (const row of data.history) {
-          if (row?.animeId) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await d.history.put(row as any);
+      if (d) {
+        const rawData = raw as { history?: { animeId: string; anime: unknown; episode: number; updatedAt: number }[] };
+        if (Array.isArray(rawData.history)) {
+          for (const row of rawData.history) {
+            if (row?.animeId) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await d.history.put(row as any);
+            }
           }
         }
       }
@@ -107,17 +125,11 @@ export function ProfileClient() {
   }
 
   function confirmClearLibrary() {
-    if (window.confirm(`Удалить все ${libraryCount} тайтлов из списка?`)) {
-      clearLibrary();
-      flash("Список очищен");
-    }
+    setDialog("library");
   }
 
   function confirmClearHistory() {
-    if (window.confirm("Очистить историю просмотров?")) {
-      clearHistory();
-      flash("История очищена");
-    }
+    setDialog("history");
   }
 
   return (
@@ -262,6 +274,24 @@ export function ProfileClient() {
           </button>
         </div>
       </Section>
+      <ConfirmDialog
+        open={dialog === "library"}
+        onOpenChange={(v) => !v && setDialog(null)}
+        title={`Удалить все ${libraryCount} тайтлов из списка?`}
+        description="Это действие нельзя отменить."
+        confirmLabel="Очистить"
+        destructive
+        onConfirm={() => { clearLibrary(); flash("Список очищен"); setDialog(null); }}
+      />
+      <ConfirmDialog
+        open={dialog === "history"}
+        onOpenChange={(v) => !v && setDialog(null)}
+        title="Очистить историю просмотров?"
+        description="Это действие нельзя отменить."
+        confirmLabel="Очистить"
+        destructive
+        onConfirm={() => { clearHistory(); flash("История очищена"); setDialog(null); }}
+      />
     </div>
   );
 }
