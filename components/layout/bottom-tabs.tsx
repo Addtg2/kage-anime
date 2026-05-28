@@ -6,6 +6,8 @@ import { Bookmark, Home, Search, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useLibraryStore } from "@/lib/store/library";
+import { useHydrated } from "@/lib/store/use-hydrated";
 
 interface Tab {
   href: string;
@@ -45,6 +47,9 @@ const TABS: Tab[] = [
 
 export function BottomTabs() {
   const pathname = usePathname();
+  const hydrated = useHydrated();
+  const entries = useLibraryStore((s) => s.entries);
+  const libraryCount = hydrated ? Object.keys(entries).length : 0;
 
   return (
     <nav
@@ -73,10 +78,17 @@ export function BottomTabs() {
                     : "text-text-dim active:bg-surface-2 active:text-foreground",
                 )}
               >
-                <Icon
-                  className="size-[22px]"
-                  strokeWidth={active ? 2 : 1.6}
-                />
+                <span className="relative">
+                  <Icon
+                    className="size-[22px]"
+                    strokeWidth={active ? 2 : 1.6}
+                  />
+                  {t.href === "/mylist" && hydrated && libraryCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
+                      {libraryCount > 99 ? "99" : libraryCount}
+                    </span>
+                  )}
+                </span>
                 <span
                   className={cn(
                     "text-[10px] tracking-wide",

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MonitorPlay } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/lib/store/settings";
 
 export interface PlayerTab {
   id: "kodik" | "alloha";
@@ -13,7 +14,14 @@ export interface PlayerTab {
 }
 
 export function PlayerSwitcher({ tabs }: { tabs: PlayerTab[] }) {
-  const initial = tabs.find((t) => t.available)?.id ?? tabs[0]?.id;
+  const preferredPlayer = useSettingsStore((s) => s.preferredPlayer);
+  const initial = (() => {
+    if (preferredPlayer === "kodik" || preferredPlayer === "alloha") {
+      const preferred = tabs.find((t) => t.id === preferredPlayer && t.available);
+      if (preferred) return preferred.id;
+    }
+    return tabs.find((t) => t.available)?.id ?? tabs[0]?.id;
+  })();
   const [active, setActive] = useState(initial);
   const current = tabs.find((t) => t.id === active) ?? tabs[0];
 

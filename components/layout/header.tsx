@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, UserCircle } from "lucide-react";
 
 import { KageLogo } from "./logo";
 import { SearchBox } from "./search-box";
@@ -65,17 +65,17 @@ export function Header() {
             <Bell className="size-5" />
           </button>
 
-          <button
-            type="button"
+          <Link
+            href="/profile"
             aria-label="Профиль"
-            className="hidden size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white sm:flex"
+            className="hidden size-8 shrink-0 items-center justify-center rounded-full text-white sm:flex"
             style={{
               background:
                 "linear-gradient(135deg, var(--brand), var(--brand-2))",
             }}
           >
-            А
-          </button>
+            <UserCircle className="size-5" />
+          </Link>
         </div>
       </div>
     </header>
