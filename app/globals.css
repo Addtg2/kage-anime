@@ -1,0 +1,153 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* View Transitions — мягкие fade-кроссы между страницами + морф постеров */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-group(*) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+  KAGE / 影 — тёмная кинематографичная тема (дизайн-система из Claude Design).
+  Палитра, типографика и акценты повторяют бандл KAGE. Тема dark-only: значения
+  держим в :root, на <html> вешаем class="dark".
+  Бренд-акценты: brand = #ff2e63 (горячий розовый), brand-2 = #00e5ff (cyan).
+*/
+:root {
+  --radius: 0.875rem;
+
+  --background: #0a0a0f;
+  --bg-elev: #10101a;
+  --surface: #16161e;
+  --surface-2: #1c1c28;
+
+  --foreground: #f4f4f7;
+  --text-dim: rgba(244, 244, 247, 0.62);
+  --text-mute: rgba(244, 244, 247, 0.38);
+
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hi: rgba(255, 255, 255, 0.16);
+
+  --brand: #ff2e63;
+  --brand-2: #00e5ff;
+  --success: #5ee2a0;
+  --star: #ffd166;
+
+  /* shadcn-токены, выровненные на палитру KAGE */
+  --card: #16161e;
+  --card-foreground: #f4f4f7;
+  --popover: #16161e;
+  --popover-foreground: #f4f4f7;
+  --primary: #ff2e63;
+  --primary-foreground: #ffffff;
+  --secondary: #16161e;
+  --secondary-foreground: #f4f4f7;
+  --muted: #16161e;
+  --muted-foreground: rgba(244, 244, 247, 0.62);
+  --accent: #1c1c28;
+  --accent-foreground: #f4f4f7;
+  --destructive: #ff2e63;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #ff2e63;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-bg-elev: var(--bg-elev);
+  --color-foreground: var(--foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+
+  --color-text-dim: var(--text-dim);
+  --color-text-mute: var(--text-mute);
+  --color-border-hi: var(--border-hi);
+
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-success: var(--success);
+  --color-star: var(--star);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  /* Space Grotesk (латиница) + Manrope (кириллица) — см. layout.tsx */
+  --font-sans: var(--font-grotesk), var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  /* Фирменные заголовки — высококонтрастный дисплейный серив с поддержкой кириллицы */
+  --font-serif: var(--font-playfair), "DM Serif Display", "Times New Roman", serif;
+  --font-jp: "Noto Sans JP", var(--font-manrope), sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* фирменные заголовки KAGE: серив + италик */
+  .font-display {
+    font-family: var(--font-serif);
+    font-style: italic;
+    letter-spacing: -0.01em;
+  }
+  ::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--surface-2);
+    border-radius: 99px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-2) transparent;
+  }
+}
+
+@layer utilities {
+  /* скрыть скроллбар у горизонтальных «рельсов», сохранив прокрутку */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
