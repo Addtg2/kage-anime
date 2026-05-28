@@ -9,6 +9,7 @@ export interface HistoryRow {
   anime: Anime;
   episode: number;
   updatedAt: number;
+  watchedEpisodes?: number[];
 }
 
 class KageDB extends Dexie {
@@ -36,12 +37,42 @@ export function db(): KageDB | null {
 export async function recordWatch(anime: Anime, episode: number) {
   const d = db();
   if (!d) return;
+  const prev = await d.history.get(anime.id);
+  const watched = new Set(prev?.watchedEpisodes ?? []);
+  watched.add(episode);
   await d.history.put({
     animeId: anime.id,
     anime,
     episode,
     updatedAt: Date.now(),
+    watchedEpisodes: Array.from(watched).sort((a, b) => a - b),
   });
+}
+
+/** Отметить серию как просмотренную, не двигая «последний эпизод». */
+export async function markEpisodeWatched(anime: Anime, episode: number) {
+  const d = db();
+  if (!d) return;
+  const prev = await d.history.get(anime.id);
+  const watched = new Set(prev?.watchedEpisodes ?? []);
+  watched.add(episode);
+  await d.history.put({
+    animeId: anime.id,
+    anime,
+    episode: prev?.episode ?? episode,
+    updatedAt: prev?.updatedAt ?? Date.now(),
+    watchedEpisodes: Array.from(watched).sort((a, b) => a - b),
+  });
+}
+
+/** Снять отметку «просмотрено» с серии. */
+export async function unmarkEpisodeWatched(animeId: string, episode: number) {
+  const d = db();
+  if (!d) return;
+  const prev = await d.history.get(animeId);
+  if (!prev) return;
+  const watched = (prev.watchedEpisodes ?? []).filter((e) => e !== episode);
+  await d.history.put({ ...prev, watchedEpisodes: watched });
 }
 
 /** Полная очистка истории — для страницы профиля. */

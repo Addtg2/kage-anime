@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Play } from "lucide-react";
+import { Check, ChevronRight, Play, RotateCcw } from "lucide-react";
 
 import type { Anime } from "@/lib/anime/types";
+import { useWatchedEpisodes } from "@/lib/db/hooks";
 import { cn } from "@/lib/utils";
 import { KageBackdrop } from "./backdrop";
 import { KagePoster } from "./poster";
@@ -64,6 +65,9 @@ export function DetailTabs({
 }
 
 function Episodes({ anime, episodes }: { anime: Anime; episodes: Ep[] }) {
+  const watched = useWatchedEpisodes(anime.id);
+  const watchedSet = new Set(watched);
+
   if (episodes.length === 0) {
     return (
       <p className="text-sm text-text-dim">
@@ -73,34 +77,57 @@ function Episodes({ anime, episodes }: { anime: Anime; episodes: Ep[] }) {
   }
   return (
     <div className="flex flex-col">
-      {episodes.map((ep) => (
-        <Link
-          key={ep.num}
-          href={`/anime/${anime.id}/watch?ep=${ep.num}`}
-          className="group grid items-center border-b border-border py-3.5 text-left gap-[clamp(0.875rem,2vw,1.5rem)] grid-cols-[clamp(110px,16vw,200px)_minmax(0,1fr)_auto]"
-        >
-          <div className="relative aspect-video w-full overflow-hidden rounded-md">
-            <KageBackdrop anime={{ ...anime, posterUrl: undefined }} rounded={6}>
-              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/50" />
-              <div className="absolute left-1/2 top-1/2 flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#0a0a0f] transition-transform group-hover:scale-110">
-                <Play className="size-3.5" fill="currentColor" strokeWidth={0} />
+      {episodes.map((ep) => {
+        const isWatched = watchedSet.has(ep.num);
+        return (
+          <Link
+            key={ep.num}
+            href={`/anime/${anime.id}/watch?ep=${ep.num}`}
+            className="group grid items-center border-b border-border py-3.5 text-left gap-[clamp(0.875rem,2vw,1.5rem)] grid-cols-[clamp(110px,16vw,200px)_minmax(0,1fr)_auto]"
+          >
+            <div className="relative aspect-video w-full overflow-hidden rounded-md">
+              <KageBackdrop anime={{ ...anime, posterUrl: undefined }} rounded={6}>
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/50" />
+                <div className="absolute left-1/2 top-1/2 flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#0a0a0f] transition-transform group-hover:scale-110">
+                  {isWatched ? (
+                    <RotateCcw className="size-3.5" strokeWidth={2.5} />
+                  ) : (
+                    <Play className="size-3.5" fill="currentColor" strokeWidth={0} />
+                  )}
+                </div>
+                <span className="absolute bottom-1 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {ep.duration} мин
+                </span>
+                {isWatched && (
+                  <span className="absolute left-1 top-1 flex size-5 items-center justify-center rounded-full bg-brand text-white shadow">
+                    <Check className="size-3" strokeWidth={3} />
+                  </span>
+                )}
+              </KageBackdrop>
+            </div>
+            <div className="min-w-0">
+              <div
+                className={cn(
+                  "mb-1.5 text-[11px] uppercase tracking-[0.15em]",
+                  isWatched ? "text-brand" : "text-text-dim",
+                )}
+              >
+                Эпизод {String(ep.num).padStart(2, "0")}
+                {isWatched && " · просмотрено"}
               </div>
-              <span className="absolute bottom-1 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                {ep.duration} мин
-              </span>
-            </KageBackdrop>
-          </div>
-          <div className="min-w-0">
-            <div className="mb-1.5 text-[11px] uppercase tracking-[0.15em] text-text-dim">
-              Эпизод {String(ep.num).padStart(2, "0")}
+              <div
+                className={cn(
+                  "font-display leading-tight text-[clamp(0.95rem,1.7vw,1.2rem)]",
+                  isWatched && "text-text-dim",
+                )}
+              >
+                {ep.title}
+              </div>
             </div>
-            <div className="font-display leading-tight text-[clamp(0.95rem,1.7vw,1.2rem)]">
-              {ep.title}
-            </div>
-          </div>
-          <ChevronRight className="size-[18px] text-text-dim" />
-        </Link>
-      ))}
+            <ChevronRight className="size-[18px] text-text-dim" />
+          </Link>
+        );
+      })}
     </div>
   );
 }

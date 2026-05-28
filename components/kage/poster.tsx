@@ -1,7 +1,10 @@
+"use client";
+
 import type { CSSProperties } from "react";
 import Image from "next/image";
 
 import type { Anime } from "@/lib/anime/types";
+import { useWatchProgress } from "@/lib/db/hooks";
 import { KAGE_FONTS } from "./fonts";
 
 const VARIANTS = [
@@ -31,13 +34,16 @@ export function KagePoster({
   showTitle = true,
   dense = false,
   className,
+  totalEps,
 }: {
   anime: Anime;
   rounded?: number;
   showTitle?: boolean;
   dense?: boolean;
   className?: string;
+  totalEps?: number;
 }) {
+  const progress = useWatchProgress(anime.id, totalEps ?? anime.eps ?? 0);
   const [c1, c2, c3] = anime.palette;
   const aid = anime.id;
   const gradId = `g-${aid}`;
@@ -215,6 +221,15 @@ export function KagePoster({
           >
             {anime.titleRu}
           </div>
+        </div>
+      )}
+
+      {progress > 0 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-white/20">
+          <div
+            className="h-full bg-brand"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       )}
     </div>

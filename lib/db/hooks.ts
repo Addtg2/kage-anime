@@ -27,3 +27,37 @@ export function useLastSeen(animeId: string | undefined): HistoryRow | undefined
     [animeId],
   );
 }
+
+/** Процент просмотра (0–100) для прогресс-бара на постере. */
+export function useWatchProgress(animeId: string, totalEps: number): number {
+  return (
+    useLiveQuery(
+      async () => {
+        const d = db();
+        if (!d || !totalEps) return 0;
+        const record = await d.history.get(animeId);
+        if (!record) return 0;
+        const watchedCount = record.watchedEpisodes?.length ?? record.episode;
+        return Math.min((watchedCount / totalEps) * 100, 100);
+      },
+      [animeId, totalEps],
+      0,
+    ) ?? 0
+  );
+}
+
+/** Список номеров просмотренных серий для отметок в списке эпизодов. */
+export function useWatchedEpisodes(animeId: string | undefined): number[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const d = db();
+        if (!d || !animeId) return [];
+        const record = await d.history.get(animeId);
+        return record?.watchedEpisodes ?? [];
+      },
+      [animeId],
+      [],
+    ) ?? []
+  );
+}
