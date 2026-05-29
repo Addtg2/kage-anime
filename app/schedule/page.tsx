@@ -7,8 +7,10 @@ import {
   type ScheduleCardData,
 } from "@/components/kage/schedule-week";
 
+// Динамика, не SSG — Shikimori-запрос на билде иногда падает по таймауту
+// и валит весь build. На рантайме с ISR-обёрткой (revalidate=3600) это безопасно.
 export const revalidate = 3600;
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Расписание — KAGE",
