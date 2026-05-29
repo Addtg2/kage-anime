@@ -8,7 +8,7 @@ import { KageBackdrop } from "./backdrop";
  * до атмосферного фона (как у AniList/Crunchyroll), + многослойные скримы для
  * читаемости текста. Если у тайтла нет постера — fallback на градиент палитры.
  */
-export function HeroBackdrop({ anime }: { anime: Anime }) {
+export function HeroBackdrop({ anime, priority = true }: { anime: Anime; priority?: boolean }) {
   const [, c2] = anime.palette;
   return (
     <>
@@ -19,7 +19,7 @@ export function HeroBackdrop({ anime }: { anime: Anime }) {
             alt=""
             fill
             sizes="100vw"
-            priority
+            priority={priority}
             className="scale-110 object-cover opacity-70 blur-2xl"
           />
         </div>

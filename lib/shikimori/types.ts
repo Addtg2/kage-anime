@@ -42,7 +42,27 @@ export const ShikiAnimeSchema = z.object({
   studios: z
     .array(z.object({ id: z.string(), name: z.string() }))
     .nullish(),
+  // только в детальном запросе; имя франшизы для группировки тайтлов
+  franchise: z.string().nullish(),
 });
+
+// Один тайтл во франшизе — компактная подвыборка для секции "Порядок просмотра".
+export const ShikiFranchiseEntrySchema = z.object({
+  id: z.string(),
+  russian: z.string().nullable(),
+  name: z.string(),
+  kind: z.string().nullable(),
+  episodes: z.number(),
+  status: z.string().nullable(),
+  airedOn: ShikiDateSchema.nullable(),
+  poster: z.object({ mainUrl: z.string() }).nullable(),
+});
+
+export const ShikiFranchiseResponseSchema = z.object({
+  animes: z.array(ShikiFranchiseEntrySchema),
+});
+
+export type ShikiFranchiseEntry = z.infer<typeof ShikiFranchiseEntrySchema>;
 
 export const ShikiAnimesResponseSchema = z.object({
   animes: z.array(ShikiAnimeSchema),

@@ -24,6 +24,8 @@ export function KbdNav() {
         return;
       }
 
+      if (key === "r") { e.preventDefault(); router.push("/random"); return; }
+
       if (key === "g") {
         pending.current = "g";
         timer.current = setTimeout(() => { pending.current = null; }, 1000);

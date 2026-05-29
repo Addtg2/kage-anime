@@ -11,11 +11,15 @@ export interface LibraryEntry {
   status: LibraryStatus;
   anime: Anime;
   addedAt: number;
+  userRating?: number;
+  note?: string;
 }
 
 interface LibraryState {
   entries: Record<string, LibraryEntry>;
   setStatus: (anime: Anime, status: LibraryStatus) => void;
+  setRating: (animeId: string, rating: number | undefined) => void;
+  setNote: (animeId: string, note: string) => void;
   remove: (animeId: string) => void;
   clear: () => void;
 }
@@ -29,12 +33,29 @@ export const useLibraryStore = create<LibraryState>()(
           entries: {
             ...s.entries,
             [anime.id]: {
+              ...s.entries[anime.id],
               status,
               anime,
               addedAt: s.entries[anime.id]?.addedAt ?? Date.now(),
             },
           },
         })),
+      setRating: (animeId, rating) =>
+        set((s) => {
+          const entry = s.entries[animeId];
+          if (!entry) return s;
+          return {
+            entries: { ...s.entries, [animeId]: { ...entry, userRating: rating } },
+          };
+        }),
+      setNote: (animeId, note) =>
+        set((s) => {
+          const entry = s.entries[animeId];
+          if (!entry) return s;
+          return {
+            entries: { ...s.entries, [animeId]: { ...entry, note } },
+          };
+        }),
       remove: (animeId) =>
         set((s) => {
           const copy = { ...s.entries };

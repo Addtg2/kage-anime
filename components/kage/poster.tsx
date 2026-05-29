@@ -1,11 +1,28 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 
 import type { Anime } from "@/lib/anime/types";
 import { useWatchProgress } from "@/lib/db/hooks";
 import { KAGE_FONTS } from "./fonts";
+
+function extractYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1) || null;
+    if (u.hostname.includes("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v) return v;
+      const parts = u.pathname.split("/");
+      const i = parts.indexOf("embed");
+      if (i >= 0 && parts[i + 1]) return parts[i + 1]!;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 const VARIANTS = [
   "orbit",
@@ -35,6 +52,7 @@ export function KagePoster({
   dense = false,
   className,
   totalEps,
+  trailerUrl,
 }: {
   anime: Anime;
   rounded?: number;
@@ -42,8 +60,29 @@ export function KagePoster({
   dense?: boolean;
   className?: string;
   totalEps?: number;
+  /** YouTube URL — при hover проигрывается mute-превью поверх постера (G4). */
+  trailerUrl?: string;
 }) {
   const progress = useWatchProgress(anime.id, totalEps ?? anime.eps ?? 0);
+  const ytId = trailerUrl ? extractYouTubeId(trailerUrl) : null;
+  const [previewActive, setPreviewActive] = useState(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    };
+  }, []);
+
+  const onEnter = () => {
+    if (!ytId) return;
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setPreviewActive(true), 600);
+  };
+  const onLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setPreviewActive(false);
+  };
   const [c1, c2, c3] = anime.palette;
   const aid = anime.id;
   const gradId = `g-${aid}`;
@@ -72,6 +111,8 @@ export function KagePoster({
     <div
       className={`relative isolate aspect-[2/3] w-full shrink-0 overflow-hidden ${className ?? ""}`}
       style={containerStyle}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
     >
       {anime.posterUrl ? (
         <>
@@ -79,7 +120,9 @@ export function KagePoster({
             src={anime.posterUrl}
             alt={anime.titleRu}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 200px"
+            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 180px"
+            placeholder="blur"
+            blurDataURL={`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='3'%3E%3Crect width='2' height='3' fill='${c1.replace('#', '%23')}'/%3E%3C/svg%3E`}
             className="object-cover"
           />
           <div
@@ -222,6 +265,16 @@ export function KagePoster({
             {anime.titleRu}
           </div>
         </div>
+      )}
+
+      {ytId && previewActive && (
+        <iframe
+          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&controls=0&playsinline=1&loop=1&playlist=${ytId}&modestbranding=1&rel=0`}
+          title={`Трейлер ${anime.titleRu}`}
+          allow="autoplay; encrypted-media"
+          className="absolute inset-0 size-full border-0"
+          style={{ pointerEvents: "none" }}
+        />
       )}
 
       {progress > 0 && (

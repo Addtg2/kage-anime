@@ -130,6 +130,66 @@ export const ANIME_DETAIL = gql`
         id
         name
       }
+      franchise
+    }
+  }
+`;
+
+// Тайтлы по списку id (через запятую). Используется чтобы догрузить детали
+// для "похожего" — id-список приходит из REST-эндпоинта /api/animes/:id/similar.
+export const ANIMES_BY_IDS = gql`
+  query AnimesByIds($ids: String!) {
+    animes(ids: $ids, limit: 12) {
+      id
+      malId
+      name
+      russian
+      japanese
+      kind
+      status
+      score
+      episodes
+      episodesAired
+      duration
+      rating
+      season
+      nextEpisodeAt
+      description
+      airedOn {
+        year
+        date
+      }
+      poster {
+        mainUrl
+        originalUrl
+      }
+      genres {
+        id
+        russian
+        kind
+      }
+    }
+  }
+`;
+
+// Список тайтлов одной франшизы, отсортированный по дате выхода.
+// Используется для секции "Порядок просмотра" на детальной странице.
+export const ANIMES_BY_FRANCHISE = gql`
+  query AnimesByFranchise($franchise: String!) {
+    animes(franchise: $franchise, limit: 50, order: aired_on) {
+      id
+      russian
+      name
+      kind
+      episodes
+      status
+      airedOn {
+        year
+        date
+      }
+      poster {
+        mainUrl
+      }
     }
   }
 `;

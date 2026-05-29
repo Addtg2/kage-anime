@@ -18,7 +18,7 @@ export function SearchBox() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Поиск (⌘K)"
-        className="group flex h-9 w-full max-w-xs items-center gap-2 rounded-full border border-border bg-surface-2 px-3.5 text-[13px] text-text-dim transition-colors hover:border-border-hi hover:text-foreground sm:max-w-sm"
+        className="group flex h-11 w-full max-w-xs items-center gap-2 rounded-full border border-border bg-surface-2 px-3.5 text-[13px] text-text-dim transition-colors hover:border-border-hi hover:text-foreground sm:h-9 sm:max-w-sm"
       >
         <Search className="size-4 shrink-0" />
         <span className="flex-1 truncate text-left">Поиск аниме…</span>

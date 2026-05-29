@@ -3,18 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import {
-  Bookmark,
-  Compass,
-  Flame,
-  History,
-  Loader2,
-  Play,
-  Sparkles,
-  Star,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Drawer } from "vaul";
+import { Bookmark, Loader2, Play, Star, X } from "lucide-react";
 
 import {
   Command,
@@ -23,13 +13,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 import { useLibraryStore } from "@/lib/store/library";
 import { useResume } from "@/lib/db/hooks";
-import { clearHistory } from "@/lib/db/dexie";
-import { ConfirmDialog } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
 
 interface RemoteHit {
   id: string;
@@ -42,8 +28,8 @@ interface RemoteHit {
 
 /**
  * KAGE Command Palette — открывается по ⌘K / Ctrl+K и через триггер в хедере.
- * Группы: «Из вашего списка», «Недавнее», «Тайтлы» (Shikimori live),
- * «Быстрые действия». Поверх cmdk (by Vercel) — fuzzy скоринг встроен.
+ * Группы: «Из вашего списка», «Недавно смотрели», «Тайтлы» (Shikimori live).
+ * Поверх cmdk (by Vercel) — fuzzy скоринг встроен.
  */
 export function CommandPalette({
   open,
@@ -56,10 +42,18 @@ export function CommandPalette({
   const [q, setQ] = useState("");
   const [remote, setRemote] = useState<RemoteHit[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showClearDialog, setShowClearDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const entries = useLibraryStore((s) => s.entries);
   const resume = useResume(8);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // Дебаунс + AbortController. Старая дропдаунка SearchBox делала то же самое.
   useEffect(() => {
@@ -131,20 +125,8 @@ export function CommandPalette({
 
   if (!open) return null;
 
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Поиск"
-    >
-      <button
-        type="button"
-        aria-label="Закрыть"
-        onClick={close}
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-      />
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-bg-elev shadow-2xl shadow-black/60">
+  const body = (
+    <>
         <Command
           loop
           shouldFilter
@@ -252,98 +234,52 @@ export function CommandPalette({
                 ))}
               </CommandGroup>
             )}
-
-            <CommandSeparator />
-
-            <CommandGroup heading="Быстрые действия">
-              <CommandItem
-                value="action catalog"
-                onSelect={() => go("/catalog")}
-              >
-                <ActionIcon>
-                  <Compass className="size-4" />
-                </ActionIcon>
-                <span className="flex-1">Открыть каталог</span>
-                <Kbd>G C</Kbd>
-              </CommandItem>
-              <CommandItem
-                value="action new"
-                onSelect={() => go("/catalog?order=aired_on")}
-              >
-                <ActionIcon>
-                  <Sparkles className="size-4" />
-                </ActionIcon>
-                <span className="flex-1">Новинки сезона</span>
-              </CommandItem>
-              <CommandItem
-                value="action top"
-                onSelect={() => go("/catalog?order=ranked")}
-              >
-                <ActionIcon>
-                  <Flame className="size-4" />
-                </ActionIcon>
-                <span className="flex-1">Топ всех времён</span>
-              </CommandItem>
-              <CommandItem
-                value="action mylist"
-                onSelect={() => go("/mylist")}
-              >
-                <ActionIcon>
-                  <Bookmark className="size-4" />
-                </ActionIcon>
-                <span className="flex-1">Открыть «Моё»</span>
-              </CommandItem>
-              {q.trim().length >= 2 && (
-                <CommandItem
-                  value="action catalog-search"
-                  onSelect={() =>
-                    go(`/catalog?search=${encodeURIComponent(q.trim())}`)
-                  }
-                >
-                  <ActionIcon>
-                    <Compass className="size-4" />
-                  </ActionIcon>
-                  <span className="flex-1">
-                    Искать «{q.trim()}» в каталоге
-                  </span>
-                </CommandItem>
-              )}
-              {resume && resume.length > 0 && (
-                <CommandItem
-                  value="action clear-history"
-                  onSelect={() => setShowClearDialog(true)}
-                >
-                  <ActionIcon>
-                    <Trash2 className="size-4" />
-                  </ActionIcon>
-                  <span className="flex-1">Очистить историю</span>
-                </CommandItem>
-              )}
-            </CommandGroup>
           </CommandList>
 
-          <div className="flex items-center justify-between border-t border-border px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-text-mute">
-            <span>
-              <Kbd>↑</Kbd> <Kbd>↓</Kbd> навигация
-            </span>
-            <span>
-              <Kbd>Esc</Kbd> закрыть
-            </span>
-            <span>
-              <Kbd>Enter</Kbd> выбрать
-            </span>
-          </div>
         </Command>
-      </div>
-      <ConfirmDialog
-        open={showClearDialog}
-        onOpenChange={setShowClearDialog}
-        title="Очистить историю просмотров?"
-        description="Это действие нельзя отменить."
-        confirmLabel="Очистить"
-        destructive
-        onConfirm={() => { clearHistory(); close(); setShowClearDialog(false); }}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer.Root open={open} onOpenChange={onOpenChange}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm" />
+          <Drawer.Content
+            aria-label="Поиск"
+            className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[92vh] flex-col overflow-hidden rounded-t-2xl border-t border-border bg-bg-elev shadow-2xl shadow-black/60 outline-none"
+          >
+            <Drawer.Title className="sr-only">Поиск</Drawer.Title>
+            <Drawer.Description className="sr-only">
+              Поиск тайтлов
+            </Drawer.Description>
+            <div
+              aria-hidden
+              className="mx-auto mt-2 mb-1 h-1.5 w-10 rounded-full bg-border"
+            />
+            {body}
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh] sm:pt-[14vh]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Поиск"
+    >
+      <button
+        type="button"
+        aria-label="Закрыть"
+        onClick={close}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
       />
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-bg-elev shadow-2xl shadow-black/60">
+        {body}
+      </div>
     </div>
   );
 }
@@ -373,6 +309,11 @@ function Meta({
       <div className="truncate font-display text-[14px] leading-snug text-foreground">
         {a.titleRu}
       </div>
+      {a.titleJp && (
+        <div className="truncate font-jp text-[11px] leading-snug text-text-mute">
+          {a.titleJp}
+        </div>
+      )}
       <div className="mt-0.5 flex items-center gap-2 text-[11px] text-text-dim">
         {a.rating > 0 && (
           <span className="inline-flex items-center gap-0.5 text-foreground">
@@ -385,31 +326,9 @@ function Meta({
           </span>
         )}
         {a.year > 0 && <span>{a.year}</span>}
-        {a.titleJp && (
-          <span className="truncate font-jp text-text-mute">{a.titleJp}</span>
-        )}
         {kind && <span className="ml-auto text-text-mute">{kind}</span>}
       </div>
     </div>
   );
 }
 
-function ActionIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-text-dim">
-      {children}
-    </div>
-  );
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd
-      className={cn(
-        "inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-border bg-surface px-1 font-mono text-[10px] text-text-dim",
-      )}
-    >
-      {children}
-    </kbd>
-  );
-}

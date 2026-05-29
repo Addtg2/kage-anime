@@ -10,6 +10,10 @@ export interface HistoryRow {
   episode: number;
   updatedAt: number;
   watchedEpisodes?: number[];
+  /** Последний таймкод текущей серии в секундах (G1) */
+  timeSeconds?: number;
+  /** Длительность серии в секундах — нужна для «осталось» в UI */
+  durationSeconds?: number;
 }
 
 class KageDB extends Dexie {
@@ -21,16 +25,28 @@ class KageDB extends Dexie {
       // ключ — animeId, индекс по updatedAt для рейла «Продолжить смотреть»
       history: "animeId, updatedAt",
     });
+    // v2: добавили timeSeconds/durationSeconds. Без новых индексов — версия только
+    // для миграции существующих записей (no-op, поля опциональные).
+    this.version(2).stores({
+      history: "animeId, updatedAt",
+    });
   }
 }
 
 let _db: KageDB | null = null;
 
-/** Возвращает singleton БД или null на сервере (Dexie работает только в браузере). */
+/** Возвращает singleton БД или null на сервере (Dexie работает только в браузере).
+ *  iOS Safari Private Mode бросает на `new Dexie()` / `indexedDB.open` — глотаем и
+ *  возвращаем null, чтобы клиентские хуки не убивали хидрацию страницы. */
 export function db(): KageDB | null {
   if (typeof window === "undefined") return null;
-  if (!_db) _db = new KageDB();
-  return _db;
+  if (_db) return _db;
+  try {
+    _db = new KageDB();
+    return _db;
+  } catch {
+    return null;
+  }
 }
 
 /** Записывает факт просмотра серии в локальную историю. No-op на сервере. */
@@ -62,6 +78,35 @@ export async function markEpisodeWatched(anime: Anime, episode: number) {
     episode: prev?.episode ?? episode,
     updatedAt: prev?.updatedAt ?? Date.now(),
     watchedEpisodes: Array.from(watched).sort((a, b) => a - b),
+  });
+}
+
+/**
+ * Сохранить текущий таймкод серии (G1). Вызывается часто из postMessage —
+ * операция должна быть дешёвой и не двигать `episode`/`watchedEpisodes`.
+ */
+export async function recordWatchTime(
+  animeId: string,
+  episode: number,
+  timeSeconds: number,
+  durationSeconds?: number,
+) {
+  const d = db();
+  if (!d) return;
+  const prev = await d.history.get(animeId);
+  if (!prev) return; // запись создаётся только через recordWatch при открытии серии
+  // Если пользователь переключился на другую серию — сбрасываем сохранённое время.
+  const sameEp = prev.episode === episode;
+  await d.history.put({
+    ...prev,
+    episode,
+    timeSeconds: Math.max(0, Math.floor(timeSeconds)),
+    durationSeconds: durationSeconds
+      ? Math.floor(durationSeconds)
+      : sameEp
+        ? prev.durationSeconds
+        : undefined,
+    updatedAt: Date.now(),
   });
 }
 

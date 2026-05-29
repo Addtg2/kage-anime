@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, Home, Search, User } from "lucide-react";
+import { Bookmark, CalendarDays, Home, Search, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -30,6 +30,12 @@ const TABS: Tab[] = [
     label: "Каталог",
     icon: Search,
     match: (p) => p.startsWith("/catalog") || p.startsWith("/anime"),
+  },
+  {
+    href: "/schedule",
+    label: "Эфир",
+    icon: CalendarDays,
+    match: (p) => p.startsWith("/schedule"),
   },
   {
     href: "/mylist",
@@ -89,6 +95,13 @@ export function BottomTabs() {
                     </span>
                   )}
                 </span>
+                <span
+                  className={cn(
+                    "mx-auto h-1 w-1 rounded-full transition-colors",
+                    active ? "bg-brand" : "bg-transparent",
+                  )}
+                  aria-hidden
+                />
                 <span
                   className={cn(
                     "text-[10px] tracking-wide",

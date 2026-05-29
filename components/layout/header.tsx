@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, UserCircle } from "lucide-react";
+import { Bell, Dices, UserCircle } from "lucide-react";
 
 import { KageLogo } from "./logo";
 import { SearchBox } from "./search-box";
@@ -12,6 +12,7 @@ const NAV = [
   { href: "/", label: "Главная" },
   { href: "/catalog", label: "Каталог" },
   { href: "/catalog?order=aired_on", label: "Новинки" },
+  { href: "/schedule", label: "Расписание" },
 ];
 
 export function Header() {
@@ -56,6 +57,15 @@ export function Header() {
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3 lg:gap-4">
           <SearchBox />
+
+          <Link
+            href="/random"
+            aria-label="Случайное аниме (R)"
+            title="Случайное аниме (R)"
+            className="hidden text-text-dim transition-colors hover:text-foreground sm:inline-flex"
+          >
+            <Dices className="size-5" />
+          </Link>
 
           <button
             type="button"

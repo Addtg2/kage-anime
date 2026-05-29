@@ -1,4 +1,5 @@
 import { cache } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -6,22 +7,32 @@ import {
   fetchAnimeById,
   fetchAnimeExtras,
   fetchAnimes,
+  fetchFranchise,
+  fetchSimilar,
   type AnimeExtras,
 } from "@/lib/shikimori/api";
 import { mapShikiToAnime } from "@/lib/anime/map";
 import type { Anime } from "@/lib/anime/types";
 import { BackButton } from "@/components/kage/back-button";
+import { Comments } from "@/components/kage/comments";
 import { DetailTabs } from "@/components/kage/detail-tabs";
 import { FadeIn } from "@/components/kage/fade-in";
+import {
+  FranchiseRail,
+  type FranchiseEntry,
+} from "@/components/kage/franchise-rail";
 import { HeroActions } from "@/components/kage/hero-actions";
 import { HeroBackdrop } from "@/components/kage/hero-backdrop";
 import { HeroPosterCard } from "@/components/kage/hero-poster-card";
 import { Rating } from "@/components/kage/rating";
 import { RelatedRail } from "@/components/kage/related-rail";
 import { ScreenshotsRail } from "@/components/kage/screenshots-rail";
+import { ShareBar } from "@/components/kage/share-bar";
+import { SpoilerSynopsis } from "@/components/kage/spoiler-synopsis";
+import { UserRating } from "@/components/kage/user-rating";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 // Дедупликация: generateMetadata и страница используют один и тот же запрос за рендер.
 const getAnime = cache((id: string) => fetchAnimeById(id));
@@ -36,7 +47,8 @@ export async function generateMetadata({
   if (!shiki) return { title: "Тайтл не найден" };
   const a = mapShikiToAnime(shiki);
   const description = a.synopsis || `${a.titleRu} — смотреть на ${SITE_NAME}`;
-  const images = a.posterUrl ? [{ url: a.posterUrl, alt: a.titleRu }] : [];
+  const ogImage = `${SITE_URL}/api/og?id=${encodeURIComponent(a.id)}`;
+  const images = [{ url: ogImage, width: 1200, height: 630, alt: a.titleRu }];
   return {
     title: a.titleRu,
     description,
@@ -54,7 +66,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: a.titleRu,
       description,
-      images: a.posterUrl ? [a.posterUrl] : undefined,
+      images: [ogImage],
     },
   };
 }
@@ -70,26 +82,75 @@ export default async function AnimePage({
 
   const anime = mapShikiToAnime(shiki);
 
-  // Похожее + экстры (видео/скриншоты/связанные) — параллельно.
+  // Похожее + экстры (видео/скриншоты/связанные) + франшиза — параллельно.
+  const sourceGenreIds = new Set((shiki.genres ?? []).map((g) => g.id));
   const genreId = shiki.genres?.[0]?.id;
-  const [similar, extras] = await Promise.all([
+  const sourceYear = shiki.airedOn?.year ?? 0;
+
+  const [similar, extras, franchiseRaw] = await Promise.all([
     (async (): Promise<Anime[]> => {
-      if (!genreId) return [];
-      try {
-        const list = await fetchAnimes(
-          { genre: genreId, order: "popularity", limit: 12 },
-          1800,
-        );
-        return list
+      // 1) Кураторское "похожее" из Shikimori REST. Для свежих тайтлов часто пусто.
+      const curated = await fetchSimilar(id, 3600);
+      if (curated.length > 0) {
+        return curated
           .map(mapShikiToAnime)
           .filter((a) => a.id !== anime.id)
           .slice(0, 10);
+      }
+      // 2) Фолбэк: топ-50 по первому жанру + локальный ререйтинг по
+      //    пересечению жанров с исходным и близости года. Без этого
+      //    для любого "сёнэна" выпадал один и тот же набор AoT/Naruto/JJK.
+      if (!genreId) return [];
+      try {
+        const list = await fetchAnimes(
+          { genre: genreId, order: "popularity", limit: 50 },
+          1800,
+        );
+        const scored = list
+          .filter((a) => a.id !== shiki.id)
+          .map((a) => {
+            const overlap = (a.genres ?? []).reduce(
+              (n, g) => n + (sourceGenreIds.has(g.id) ? 1 : 0),
+              0,
+            );
+            const yearDiff =
+              sourceYear && a.airedOn?.year
+                ? Math.abs(a.airedOn.year - sourceYear)
+                : 30;
+            // overlap важнее года; формула: больше общих жанров = выше,
+            // ближе по году = выше, при равенстве — выше score.
+            return {
+              a,
+              score: overlap * 100 - yearDiff + (a.score ?? 0) / 10,
+            };
+          });
+        scored.sort((x, y) => y.score - x.score);
+        return scored.slice(0, 10).map(({ a }) => mapShikiToAnime(a));
       } catch {
         return [];
       }
     })(),
     fetchAnimeExtras(id, 1800) satisfies Promise<AnimeExtras>,
+    shiki.franchise ? fetchFranchise(shiki.franchise, 3600) : Promise.resolve([]),
   ]);
+
+  // Группа сортируется Shikimori по aired_on; добиваем сортировку по date на случай ничьих/null.
+  const franchise: FranchiseEntry[] = franchiseRaw
+    .map((f) => ({
+      id: f.id,
+      titleRu: f.russian || f.name,
+      kind: f.kind,
+      year: f.airedOn?.year ?? null,
+      episodes: f.episodes,
+      status: f.status,
+      posterUrl: f.poster?.mainUrl ?? null,
+      airedDate: f.airedOn?.date ?? null,
+    }))
+    .sort((a, b) => {
+      const ad = a.airedDate ? Date.parse(a.airedDate) : a.year ? a.year * 1e10 : Infinity;
+      const bd = b.airedDate ? Date.parse(b.airedDate) : b.year ? b.year * 1e10 : Infinity;
+      return ad - bd;
+    });
 
   const epCount = Math.min(anime.eps || 0, 24);
   const episodes = Array.from({ length: epCount }, (_, i) => ({
@@ -137,7 +198,15 @@ export default async function AnimePage({
 
         <BackButton className="absolute left-[clamp(1rem,3vw,3.5rem)] top-[clamp(1rem,2.5vw,1.5rem)] z-20" />
 
-        <HeroPosterCard anime={anime} />
+        <HeroPosterCard
+          anime={anime}
+          trailerUrl={
+            extras.videos.find(
+              (v) =>
+                v.kind === "pv" && /youtu/i.test(v.url),
+            )?.url
+          }
+        />
 
         <FadeIn className="absolute inset-x-0 px-[clamp(1rem,4vw,3.5rem)] bottom-[clamp(1.5rem,4vw,3rem)] text-white">
           {anime.titleJp && (
@@ -175,6 +244,10 @@ export default async function AnimePage({
             canWatch={canWatch}
             videos={extras.videos}
           />
+
+          <div className="mt-3">
+            <ShareBar anime={anime} malId={shiki.malId} />
+          </div>
         </FadeIn>
       </section>
 
@@ -185,18 +258,34 @@ export default async function AnimePage({
             «{anime.tagline}»
           </p>
           {anime.synopsis && (
-            <p className="max-w-3xl text-sm leading-relaxed text-text-dim sm:text-base">
-              {anime.synopsis}
-            </p>
+            <SpoilerSynopsis synopsis={anime.synopsis} />
+          )}
+          {shiki.genres && shiki.genres.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {shiki.genres
+                .filter((g) => g.russian)
+                .map((g) => (
+                  <Link
+                    key={g.id}
+                    href={`/catalog?tag=${g.id}`}
+                    className="rounded-full border border-border bg-surface/60 px-3 py-1 text-xs text-text-dim transition-colors hover:border-brand hover:text-brand"
+                  >
+                    #{g.russian}
+                  </Link>
+                ))}
+            </div>
           )}
         </div>
-        <dl className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-3 text-sm">
-          <Meta label="Студия" value={anime.studio || "—"} />
-          <Meta label="Жанр" value={anime.genres.join(", ") || "—"} />
-          <Meta label="Год" value={anime.year ? String(anime.year) : "—"} />
-          <Meta label="Возраст" value={anime.age || "—"} />
-          <Meta label="Озвучка" value="RU · JP" />
-        </dl>
+        <div className="flex flex-col gap-4">
+          <dl className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-3 text-sm">
+            <Meta label="Студия" value={anime.studio || "—"} />
+            <Meta label="Жанр" value={anime.genres.join(", ") || "—"} />
+            <Meta label="Год" value={anime.year ? String(anime.year) : "—"} />
+            <Meta label="Возраст" value={anime.age || "—"} />
+            <Meta label="Озвучка" value="RU · JP" />
+          </dl>
+          <UserRating animeId={anime.id} shikiRating={anime.rating > 0 ? anime.rating : undefined} />
+        </div>
       </div>
 
       {/* EXTRAS: скриншоты + связанные (между метой и табами) */}
@@ -211,8 +300,29 @@ export default async function AnimePage({
         </div>
       )}
 
+      {/* FRANCHISE — порядок просмотра, скрыт если в франшизе 0-1 тайтлов */}
+      <FranchiseRail items={franchise} currentId={anime.id} />
+
       {/* TABS */}
-      <DetailTabs anime={anime} episodes={episodes} similar={similar} />
+      <DetailTabs
+        anime={anime}
+        episodes={episodes}
+        similar={similar}
+        screenshots={extras.screenshots}
+        episodesAired={
+          // Shikimori для завершённых тайтлов часто отдаёт episodesAired=0 —
+          // нормализуем: released → все серии вышли, anons → ни одной.
+          shiki.status === "released"
+            ? episodes.length
+            : shiki.status === "anons"
+              ? 0
+              : (shiki.episodesAired ?? 0)
+        }
+        nextEpisodeAt={shiki.nextEpisodeAt ?? null}
+      />
+
+      {/* COMMENTS */}
+      <Comments animeId={anime.id} />
     </div>
   );
 }
