@@ -65,6 +65,73 @@
   --ring: #ff2e63;
 }
 
+/* === OLED (true black) === */
+/* Полностью чёрный фон, у поверхностей — почти чёрный, но не идентичный
+   фону, чтобы карточки оставались различимы. Для AMOLED-экранов выигрыш
+   по батарее: чёрные пиксели физически выключены. */
+:root[data-theme="oled"] {
+  --background: #000000;
+  --bg-elev: #050507;
+  --surface: #0a0a10;
+  --surface-2: #101018;
+
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-hi: rgba(255, 255, 255, 0.12);
+
+  --card: #0a0a10;
+  --popover: #0a0a10;
+  --secondary: #0a0a10;
+  --muted: #0a0a10;
+  --accent: #101018;
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.06);
+}
+
+/* === Light === */
+/* Светлая палитра с тем же бренд-розовым акцентом. Контрастный текст,
+   мягкие серые подложки, бордеры через rgba от чёрного. */
+:root[data-theme="light"] {
+  --background: #fafafb;
+  --bg-elev: #ffffff;
+  --surface: #f1f1f4;
+  --surface-2: #e6e6eb;
+
+  --foreground: #0a0a0f;
+  --text-dim: rgba(10, 10, 15, 0.66);
+  --text-mute: rgba(10, 10, 15, 0.42);
+
+  --border-color: rgba(10, 10, 15, 0.10);
+  --border-hi: rgba(10, 10, 15, 0.20);
+
+  --brand: #ff2e63;
+  --brand-2: #00b3cc;
+  --success: #1faa6c;
+  --star: #e6a300;
+
+  --card: #ffffff;
+  --card-foreground: #0a0a0f;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0f;
+  --primary: #ff2e63;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f1f4;
+  --secondary-foreground: #0a0a0f;
+  --muted: #f1f1f4;
+  --muted-foreground: rgba(10, 10, 15, 0.66);
+  --accent: #e6e6eb;
+  --accent-foreground: #0a0a0f;
+  --destructive: #ff2e63;
+  --destructive-foreground: #ffffff;
+  --border: rgba(10, 10, 15, 0.10);
+  --input: rgba(10, 10, 15, 0.10);
+  --ring: #ff2e63;
+}
+
+/* Тонкий тюнинг scrollbar под светлую тему */
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-bg-elev: var(--bg-elev);
