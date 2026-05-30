@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Mic2,
@@ -99,6 +100,8 @@ export function EmbeddedPlayer({
   }, [translations, savedTranslationId]);
 
   const [dubQuery, setDubQuery] = useState("");
+  // На мобиле панель озвучек сворачивается (десктоп всегда раскрыт — lg:).
+  const [dubOpen, setDubOpen] = useState(false);
   const filteredTranslations = useMemo(() => {
     const q = dubQuery.trim().toLowerCase();
     if (!q) return translations;
@@ -196,63 +199,89 @@ export function EmbeddedPlayer({
 
         {/* ПАНЕЛЬ ОЗВУЧКИ */}
         {showDubPanel && activeTranslation && (
-          <aside className="relative min-h-[280px] lg:min-h-0">
+          <aside className="relative">
             <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-surface/50 p-2.5 backdrop-blur-sm lg:absolute lg:inset-0">
-              <div className="flex items-center gap-2 px-1 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-dim">
-                <Mic2 className="size-3.5 text-brand" />
+              {/* Шапка-тоггл: на мобиле сворачивает/разворачивает список */}
+              <button
+                type="button"
+                onClick={() => setDubOpen((o) => !o)}
+                aria-expanded={dubOpen}
+                className="flex items-center gap-2 px-1 pt-0.5 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-text-dim lg:pointer-events-none"
+              >
+                <Mic2 className="size-3.5 shrink-0 text-brand" />
                 Озвучка
-                <span className="ml-auto rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-foreground">
+                <span className="ml-1 truncate text-[11px] font-medium normal-case tracking-normal text-text-dim lg:hidden">
+                  · {activeTranslation.title}
+                </span>
+                <span className="ml-auto shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-foreground">
                   {translations.length}
                 </span>
-              </div>
-
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-mute" />
-                <input
-                  type="text"
-                  value={dubQuery}
-                  onChange={(e) => setDubQuery(e.target.value)}
-                  placeholder="Поиск студии…"
-                  className="h-9 w-full rounded-lg border border-border bg-surface pl-8 pr-3 text-xs text-foreground placeholder:text-text-mute focus:border-brand/60 focus:outline-none"
-                  aria-label="Поиск студии"
+                <ChevronDown
+                  className={cn(
+                    "size-4 shrink-0 transition-transform lg:hidden",
+                    dubOpen && "rotate-180",
+                  )}
                 />
-              </div>
+              </button>
 
-              <div className="no-scrollbar -mr-1 flex max-h-[260px] flex-col gap-1 overflow-y-auto pr-1 lg:max-h-none lg:flex-1">
-                {filteredTranslations.map((t) => {
-                  const isActive = t.id === activeTranslation.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setTranslation(anime.id, t.id)}
-                      className={cn(
-                        "group flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] transition-all",
-                        isActive
-                          ? "bg-brand font-medium text-white shadow-lg shadow-brand/25"
-                          : "text-text-dim hover:bg-surface-2 hover:text-foreground",
-                      )}
-                    >
-                      <span className="line-clamp-1 flex-1">{t.title}</span>
-                      {t.type === "subtitles" && (
-                        <span
-                          className={cn(
-                            "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-                            isActive ? "bg-white/20 text-white" : "bg-surface text-text-mute",
-                          )}
-                        >
-                          суб
-                        </span>
-                      )}
-                      {isActive && <Check className="size-3.5 shrink-0" strokeWidth={3} />}
-                    </button>
-                  );
-                })}
-                {filteredTranslations.length === 0 && (
-                  <p className="px-3 py-6 text-center text-xs text-text-mute">
-                    Студия не найдена
-                  </p>
+              <div
+                className={cn(
+                  "flex-col gap-2.5",
+                  dubOpen ? "flex" : "hidden",
+                  "lg:flex lg:min-h-0 lg:flex-1",
                 )}
+              >
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-mute" />
+                  <input
+                    type="text"
+                    value={dubQuery}
+                    onChange={(e) => setDubQuery(e.target.value)}
+                    placeholder="Поиск студии…"
+                    className="h-9 w-full rounded-lg border border-border bg-surface pl-8 pr-3 text-xs text-foreground placeholder:text-text-mute focus:border-brand/60 focus:outline-none"
+                    aria-label="Поиск студии"
+                  />
+                </div>
+
+                <div className="no-scrollbar -mr-1 flex max-h-[50vh] flex-col gap-1 overflow-y-auto pr-1 lg:max-h-none lg:flex-1">
+                  {filteredTranslations.map((t) => {
+                    const isActive = t.id === activeTranslation.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setTranslation(anime.id, t.id);
+                          setDubOpen(false);
+                        }}
+                        className={cn(
+                          "group flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] transition-all",
+                          isActive
+                            ? "bg-brand font-medium text-white shadow-lg shadow-brand/25"
+                            : "text-text-dim hover:bg-surface-2 hover:text-foreground",
+                        )}
+                      >
+                        <span className="line-clamp-1 flex-1">{t.title}</span>
+                        {t.type === "subtitles" && (
+                          <span
+                            className={cn(
+                              "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                              isActive ? "bg-white/20 text-white" : "bg-surface text-text-mute",
+                            )}
+                          >
+                            суб
+                          </span>
+                        )}
+                        {isActive && <Check className="size-3.5 shrink-0" strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
+                  {filteredTranslations.length === 0 && (
+                    <p className="px-3 py-6 text-center text-xs text-text-mute">
+                      Студия не найдена
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </aside>
