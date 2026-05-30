@@ -122,7 +122,7 @@ export function HistoryClient() {
               </div>
               <div className="flex items-center gap-1.5">
                 <Link
-                  href={`/anime/${row.animeId}/watch?ep=${row.episode}`}
+                  href={`/anime/${row.animeId}?ep=${row.episode}#player`}
                   className="flex h-9 items-center gap-1.5 rounded-full bg-brand px-3 text-xs font-medium text-white transition hover:opacity-90"
                   aria-label="Продолжить"
                 >

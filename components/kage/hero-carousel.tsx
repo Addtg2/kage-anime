@@ -12,17 +12,34 @@ import { Rating } from "@/components/kage/rating";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const INTERVAL = 5000;
+const INTERVAL = 8000;
 
 function Dot() {
   return <span className="size-[3px] rounded-full bg-text-dim" />;
 }
 
-function HeroSlide({ anime, rank, priority }: { anime: Anime; rank: number; priority?: boolean }) {
+function HeroSlide({
+  anime,
+  rank,
+  priority,
+  trailerUrl,
+  active,
+}: {
+  anime: Anime;
+  rank: number;
+  priority?: boolean;
+  trailerUrl?: string;
+  active?: boolean;
+}) {
   return (
     <>
-      <HeroBackdrop anime={anime} priority={priority} />
-      <HeroPosterCard anime={anime} />
+      <HeroBackdrop
+        anime={anime}
+        priority={priority}
+        trailerUrl={trailerUrl}
+        active={active}
+      />
+      <HeroPosterCard anime={anime} trailerUrl={trailerUrl} />
 
       <FadeIn className="absolute inset-x-0 px-[clamp(1rem,4vw,2.5rem)] bottom-[clamp(3rem,7vw,6rem)]">
         <div className="max-w-2xl text-white">
@@ -75,7 +92,7 @@ function HeroSlide({ anime, rank, priority }: { anime: Anime; rank: number; prio
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href={`/anime/${anime.id}/watch`}
+              href={`/anime/${anime.id}#player`}
               className={cn(buttonVariants({ variant: "primary", size: "lg" }))}
             >
               <Play fill="currentColor" strokeWidth={0} />
@@ -95,7 +112,14 @@ function HeroSlide({ anime, rank, priority }: { anime: Anime; rank: number; prio
   );
 }
 
-export function HeroCarousel({ items }: { items: Anime[] }) {
+export function HeroCarousel({
+  items,
+  trailers,
+}: {
+  items: Anime[];
+  /** Ссылки на трейлеры по id аниме (для фонового видео активного слайда). */
+  trailers?: Record<string, string>;
+}) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [progressKey, setProgressKey] = useState(0);
@@ -167,7 +191,13 @@ export function HeroCarousel({ items }: { items: Anime[] }) {
           style={{ opacity: i === active ? 1 : 0, pointerEvents: i === active ? "auto" : "none" }}
           aria-hidden={i !== active}
         >
-          <HeroSlide anime={anime} rank={i + 1} priority={i === 0} />
+          <HeroSlide
+            anime={anime}
+            rank={i + 1}
+            priority={i === 0}
+            trailerUrl={trailers?.[anime.id]}
+            active={i === active}
+          />
         </div>
       ))}
 

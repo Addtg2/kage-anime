@@ -1,14 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 
 import type { ShikiRelated } from "@/lib/shikimori/types";
+import { useDragScroll } from "./use-drag-scroll";
 
 /**
  * Связанные тайтлы (приквел/сиквел/спин-офф). Берёт relationRu из Shikimori
- * как бэдж. Скрывается, если нет ни одного с anime != null.
+ * как бэдж. Скрывается, если нет ни одного с anime != null. Лента тянется мышью.
  */
 export function RelatedRail({ related }: { related: ShikiRelated[] }) {
   const items = related.filter((r) => r.anime !== null);
+  const { ref, onPointerDown, onDragStart, didDrag } = useDragScroll<HTMLDivElement>();
   if (items.length === 0) return null;
 
   return (
@@ -18,7 +22,12 @@ export function RelatedRail({ related }: { related: ShikiRelated[] }) {
           Связанные тайтлы
         </h2>
       </div>
-      <div className="no-scrollbar overflow-x-auto px-[clamp(1rem,4vw,3.5rem)]">
+      <div
+        ref={ref}
+        onPointerDown={onPointerDown}
+        onDragStart={onDragStart}
+        className="no-scrollbar cursor-grab select-none overflow-x-auto px-[clamp(1rem,4vw,3.5rem)] active:cursor-grabbing"
+      >
         <div className="flex gap-3 sm:gap-4">
           {items.map((r, i) => {
             const a = r.anime!;
@@ -29,6 +38,9 @@ export function RelatedRail({ related }: { related: ShikiRelated[] }) {
               <Link
                 key={`${a.id}-${i}`}
                 href={`/anime/${a.id}`}
+                onClick={(e) => {
+                  if (didDrag()) e.preventDefault();
+                }}
                 className="group w-[clamp(132px,15vw,200px)] shrink-0 transition-transform hover:-translate-y-1"
               >
                 <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border bg-surface">

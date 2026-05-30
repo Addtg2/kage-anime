@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { Anime } from "@/lib/anime/types";
 import { cn } from "@/lib/utils";
@@ -15,10 +15,13 @@ export function AnimeRail({
   title,
   subtitle,
   items,
+  href,
 }: {
   title: string;
   subtitle?: string;
   items: Anime[];
+  /** Ссылка «Смотреть все» — обычно фильтр каталога. */
+  href?: string;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
@@ -45,15 +48,27 @@ export function AnimeRail({
 
   return (
     <section className="relative">
-      <div className="mb-3 flex items-baseline justify-between px-[clamp(1rem,4vw,2.5rem)] sm:mb-4">
-        <div>
-          <h2 className="font-display text-foreground text-[clamp(1.25rem,2vw,1.7rem)]">
+      <div className="mb-3 flex items-end justify-between gap-4 px-[clamp(1rem,4vw,2.5rem)] sm:mb-4">
+        <div className="min-w-0">
+          <h2 className="font-display flex items-center gap-2.5 text-foreground text-[clamp(1.25rem,2vw,1.7rem)]">
+            <span className="h-[1.1em] w-1 shrink-0 rounded-full bg-brand" />
             {title}
           </h2>
           {subtitle && (
-            <div className="mt-1 text-xs text-text-dim sm:text-sm">{subtitle}</div>
+            <div className="mt-1 pl-[18px] text-xs text-text-dim sm:text-sm">
+              {subtitle}
+            </div>
           )}
         </div>
+        {href && (
+          <Link
+            href={href}
+            className="group flex shrink-0 items-center gap-1 text-xs font-medium text-text-dim transition-colors hover:text-brand sm:text-sm"
+          >
+            Смотреть все
+            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        )}
       </div>
 
       <div className="relative">
@@ -65,7 +80,7 @@ export function AnimeRail({
                 href={`/anime/${a.id}`}
                 className={cn(
                   POSTER_W,
-                  "shrink-0 transition-transform duration-200 hover:-translate-y-1",
+                  "shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-1.5 hover:scale-[1.03]",
                 )}
               >
                 <KagePoster anime={a} dense />

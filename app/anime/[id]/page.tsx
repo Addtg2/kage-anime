@@ -2,6 +2,14 @@ import { cache } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import {
+  Building2,
+  CalendarDays,
+  Clapperboard,
+  Mic2,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   fetchAnimeById,
@@ -13,9 +21,13 @@ import {
 } from "@/lib/shikimori/api";
 import { mapShikiToAnime } from "@/lib/anime/map";
 import type { Anime } from "@/lib/anime/types";
+import { kodikSearch, type PlayerSource } from "@/lib/kodik/client";
+import { allohaSearch } from "@/lib/alloha/client";
 import { BackButton } from "@/components/kage/back-button";
 import { Comments } from "@/components/kage/comments";
 import { DetailTabs } from "@/components/kage/detail-tabs";
+import { EmbeddedPlayer } from "@/components/kage/embedded-player";
+import { type PlayerTab } from "@/components/kage/player-switcher";
 import { FadeIn } from "@/components/kage/fade-in";
 import {
   FranchiseRail,
@@ -73,21 +85,25 @@ export async function generateMetadata({
 
 export default async function AnimePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ ep?: string; start?: string }>;
 }) {
   const { id } = await params;
+  const { ep, start } = await searchParams;
   const shiki = await getAnime(id).catch(() => null);
   if (!shiki) notFound();
 
   const anime = mapShikiToAnime(shiki);
+  const canWatch = shiki.status !== "anons";
 
-  // Похожее + экстры (видео/скриншоты/связанные) + франшиза — параллельно.
+  // Похожее + экстры (видео/скриншоты/связанные) + франшиза + источники плеера — параллельно.
   const sourceGenreIds = new Set((shiki.genres ?? []).map((g) => g.id));
   const genreId = shiki.genres?.[0]?.id;
   const sourceYear = shiki.airedOn?.year ?? 0;
 
-  const [similar, extras, franchiseRaw] = await Promise.all([
+  const [similar, extras, franchiseRaw, kodik, alloha] = await Promise.all([
     (async (): Promise<Anime[]> => {
       // 1) Кураторское "похожее" из Shikimori REST. Для свежих тайтлов часто пусто.
       const curated = await fetchSimilar(id, 3600);
@@ -95,7 +111,7 @@ export default async function AnimePage({
         return curated
           .map(mapShikiToAnime)
           .filter((a) => a.id !== anime.id)
-          .slice(0, 10);
+          .slice(0, 24);
       }
       // 2) Фолбэк: топ-50 по первому жанру + локальный ререйтинг по
       //    пересечению жанров с исходным и близости года. Без этого
@@ -125,14 +141,56 @@ export default async function AnimePage({
             };
           });
         scored.sort((x, y) => y.score - x.score);
-        return scored.slice(0, 10).map(({ a }) => mapShikiToAnime(a));
+        return scored.slice(0, 24).map(({ a }) => mapShikiToAnime(a));
       } catch {
         return [];
       }
     })(),
     fetchAnimeExtras(id, 1800) satisfies Promise<AnimeExtras>,
     shiki.franchise ? fetchFranchise(shiki.franchise, 3600) : Promise.resolve([]),
+    canWatch
+      ? kodikSearch(id)
+      : Promise.resolve<PlayerSource>({ available: false }),
+    canWatch
+      ? allohaSearch(id)
+      : Promise.resolve<PlayerSource>({ available: false }),
   ]);
+
+  const playerTabs: PlayerTab[] = [
+    {
+      id: "kodik",
+      label: "Kodik",
+      available: kodik.available,
+      src: kodik.src,
+      translations: kodik.translations,
+    },
+    { id: "alloha", label: "Alloha", available: alloha.available, src: alloha.src },
+  ];
+
+  // Серии для бара плеера: episodesAired (или episodes для завершённых).
+  // Без жёсткого лимита — длинные тайтлы (One Piece 1000+) показываем полностью,
+  // список серий прокручивается. Верхняя граница только от абсурдных значений.
+  const totalPlayerEps = Math.max(
+    Math.min(shiki.episodesAired || shiki.episodes || 1, 5000),
+    1,
+  );
+  const playerEpisodes = Array.from({ length: totalPlayerEps }, (_, i) => i + 1);
+  // Сколько серий реально доступно: released → все, anons → 0, иначе episodesAired.
+  const playerAired =
+    shiki.status === "released"
+      ? totalPlayerEps
+      : shiki.status === "anons"
+        ? 0
+        : (shiki.episodesAired ?? totalPlayerEps);
+
+  const initialEpisode = (() => {
+    const n = ep ? Number(ep) : 1;
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+  })();
+  const startSeconds = (() => {
+    const n = start ? Number(start) : 0;
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  })();
 
   // Группа сортируется Shikimori по aired_on; добиваем сортировку по date на случай ничьих/null.
   const franchise: FranchiseEntry[] = franchiseRaw
@@ -158,8 +216,6 @@ export default async function AnimePage({
     title: `Серия ${i + 1}`,
     duration: shiki.duration ?? 24,
   }));
-
-  const canWatch = shiki.status !== "anons";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -252,13 +308,21 @@ export default async function AnimePage({
       </section>
 
       {/* SYNOPSIS + META */}
-      <div className="grid gap-[clamp(1.5rem,3vw,2.5rem)] border-b border-border py-[clamp(1.5rem,3vw,2.75rem)] px-[clamp(1rem,4vw,3.5rem)] md:grid-cols-[2fr_1fr]">
-        <div>
-          <p className="font-display mb-4 leading-snug text-brand text-[clamp(1.35rem,2.5vw,2rem)]">
-            «{anime.tagline}»
-          </p>
-          {anime.synopsis && (
+      <div className="grid gap-[clamp(1.5rem,3.5vw,3rem)] border-b border-border py-[clamp(1.75rem,3.5vw,3rem)] px-[clamp(1rem,4vw,3.5rem)] lg:grid-cols-[minmax(0,1fr)_clamp(290px,28vw,360px)]">
+        <div className="min-w-0">
+          {anime.tagline && (
+            <p className="font-display mb-5 leading-snug text-brand text-[clamp(1.3rem,2.4vw,1.9rem)]">
+              «{anime.tagline}»
+            </p>
+          )}
+          <div className="mb-3 flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-dim">
+            <span className="h-px w-6 bg-brand" />
+            Описание
+          </div>
+          {anime.synopsis ? (
             <SpoilerSynopsis synopsis={anime.synopsis} />
+          ) : (
+            <p className="text-sm text-text-dim">Описание для этого тайтла пока недоступно.</p>
           )}
           {shiki.genres && shiki.genres.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-2">
@@ -276,23 +340,30 @@ export default async function AnimePage({
             </div>
           )}
         </div>
-        <div className="flex flex-col gap-4">
-          <dl className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-3 text-sm">
-            <Meta label="Студия" value={anime.studio || "—"} />
-            <Meta label="Жанр" value={anime.genres.join(", ") || "—"} />
-            <Meta label="Год" value={anime.year ? String(anime.year) : "—"} />
-            <Meta label="Возраст" value={anime.age || "—"} />
-            <Meta label="Озвучка" value="RU · JP" />
+
+        {/* ИНФО-КАРТОЧКА */}
+        <aside className="h-fit overflow-hidden rounded-2xl border border-border bg-surface/40">
+          <dl className="divide-y divide-border/60">
+            <InfoRow icon={Building2} label="Студия" value={anime.studio || "—"} />
+            <InfoRow icon={Clapperboard} label="Жанры" value={anime.genres.join(", ") || "—"} />
+            <InfoRow icon={CalendarDays} label="Год" value={anime.year ? String(anime.year) : "—"} />
+            <InfoRow icon={ShieldCheck} label="Возраст" value={anime.age || "—"} />
+            <InfoRow icon={Mic2} label="Озвучка" value="RU · JP" />
           </dl>
-          <UserRating animeId={anime.id} shikiRating={anime.rating > 0 ? anime.rating : undefined} />
-        </div>
+          <div className="border-t border-border bg-surface/30 p-[clamp(0.875rem,1.4vw,1.15rem)]">
+            <UserRating
+              animeId={anime.id}
+              shikiRating={anime.rating > 0 ? anime.rating : undefined}
+            />
+          </div>
+        </aside>
       </div>
 
       {/* EXTRAS: скриншоты + связанные (между метой и табами) */}
       {(extras.screenshots.length > 0 || extras.related.length > 0) && (
         <div className="flex flex-col gap-[clamp(1.5rem,3vw,2.5rem)] border-b border-border py-[clamp(1.5rem,3vw,2.5rem)]">
           {extras.screenshots.length > 0 && (
-            <ScreenshotsRail screenshots={extras.screenshots.slice(0, 12)} />
+            <ScreenshotsRail screenshots={extras.screenshots} />
           )}
           {extras.related.length > 0 && (
             <RelatedRail related={extras.related} />
@@ -303,12 +374,25 @@ export default async function AnimePage({
       {/* FRANCHISE — порядок просмотра, скрыт если в франшизе 0-1 тайтлов */}
       <FranchiseRail items={franchise} currentId={anime.id} />
 
-      {/* TABS */}
+      {/* TABS — в табе «Эпизоды» рендерится встроенный плеер */}
       <DetailTabs
         anime={anime}
         episodes={episodes}
         similar={similar}
         screenshots={extras.screenshots}
+        player={
+          canWatch ? (
+            <EmbeddedPlayer
+              anime={anime}
+              tabs={playerTabs}
+              episodes={playerEpisodes}
+              episodesAired={playerAired}
+              initialEpisode={initialEpisode}
+              startSeconds={startSeconds}
+              episodeDuration={shiki.duration ?? null}
+            />
+          ) : null
+        }
         episodesAired={
           // Shikimori для завершённых тайтлов часто отдаёт episodesAired=0 —
           // нормализуем: released → все серии вышли, anons → ни одной.
@@ -327,12 +411,29 @@ export default async function AnimePage({
   );
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
   return (
-    <>
-      <dt className="text-text-dim">{label}</dt>
-      <dd className="m-0 text-foreground">{value}</dd>
-    </>
+    <div className="flex items-center gap-3 p-[clamp(0.75rem,1.2vw,1rem)]">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-brand">
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[11px] uppercase tracking-[0.12em] text-text-mute">
+          {label}
+        </dt>
+        <dd className="m-0 line-clamp-2 text-sm font-medium text-foreground">
+          {value}
+        </dd>
+      </div>
+    </div>
   );
 }
 

@@ -36,7 +36,7 @@ export function ContinueRail() {
           {rows.map(({ anime, episode }) => (
             <Link
               key={anime.id}
-              href={`/anime/${anime.id}/watch?ep=${episode}`}
+              href={`/anime/${anime.id}?ep=${episode}#player`}
               className={`${POSTER_W} group shrink-0 transition-transform duration-200 hover:-translate-y-1`}
             >
               <div className="relative">

@@ -11,7 +11,15 @@ import { cn } from "@/lib/utils";
  * Топ-10 недели. Лидер — полноширинная карточка с реальным постером слева
  * и плотной метой справа. Места 2–10 — компактная адаптивная сетка (1/2/3 кол.).
  */
-export function TrendingLeaderboard({ items }: { items: Anime[] }) {
+export function TrendingLeaderboard({
+  items,
+  eyebrow = "Топ 10 на этой неделе",
+  title = "В тренде",
+}: {
+  items: Anime[];
+  eyebrow?: string;
+  title?: string;
+}) {
   if (items.length === 0) return null;
   const featured = items[0];
   const rest = items.slice(1, 10);
@@ -21,10 +29,10 @@ export function TrendingLeaderboard({ items }: { items: Anime[] }) {
       <div className="mb-5 sm:mb-7">
         <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-brand">
           <span className="h-px w-6 bg-brand" />
-          Топ 10 на этой неделе
+          {eyebrow}
         </div>
         <h2 className="font-display text-foreground text-[clamp(1.5rem,2.6vw,2.25rem)]">
-          В тренде
+          {title}
         </h2>
       </div>
 

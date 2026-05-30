@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { X } from "lucide-react";
 
 import type { ShikiScreenshot } from "@/lib/shikimori/types";
@@ -16,6 +21,39 @@ export function ScreenshotsRail({
   screenshots: ShikiScreenshot[];
 }) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
+
+  // Drag-to-scroll вбок (как лента серий в плеере). Move/up — на window.
+  useEffect(() => {
+    const onMove = (e: globalThis.PointerEvent) => {
+      const el = scrollRef.current;
+      if (!el || !drag.current.active) return;
+      const dx = e.clientX - drag.current.startX;
+      if (Math.abs(dx) > 4) drag.current.moved = true;
+      el.scrollLeft = drag.current.startScroll - dx;
+    };
+    const onUp = () => {
+      drag.current.active = false;
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = scrollRef.current;
+    if (!el || e.button !== 0 || e.pointerType === "touch") return;
+    drag.current = {
+      active: true,
+      startX: e.clientX,
+      startScroll: el.scrollLeft,
+      moved: false,
+    };
+  };
 
   useEffect(() => {
     if (activeIdx === null) return;
@@ -51,13 +89,20 @@ export function ScreenshotsRail({
           {screenshots.length} шт.
         </span>
       </div>
-      <div className="no-scrollbar overflow-x-auto px-[clamp(1rem,4vw,3.5rem)]">
+      <div
+        ref={scrollRef}
+        onPointerDown={onPointerDown}
+        className="no-scrollbar cursor-grab select-none overflow-x-auto px-[clamp(1rem,4vw,3.5rem)] active:cursor-grabbing"
+      >
         <div className="flex gap-3 sm:gap-4">
           {screenshots.map((s, i) => (
             <button
               key={s.id}
               type="button"
-              onClick={() => setActiveIdx(i)}
+              onClick={() => {
+                if (drag.current.moved) return;
+                setActiveIdx(i);
+              }}
               className="relative aspect-video w-[clamp(220px,28vw,360px)] shrink-0 overflow-hidden rounded-lg border border-border bg-surface transition-transform hover:-translate-y-1"
               aria-label={`Скриншот ${i + 1}`}
             >
@@ -66,7 +111,8 @@ export function ScreenshotsRail({
                 src={s.x166Url ?? s.originalUrl}
                 alt=""
                 loading="lazy"
-                className="absolute inset-0 size-full object-cover"
+                draggable={false}
+                className="pointer-events-none absolute inset-0 size-full object-cover"
               />
             </button>
           ))}

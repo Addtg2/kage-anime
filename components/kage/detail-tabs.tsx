@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { CalendarClock, Check, Play, RotateCcw } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { useWatchedEpisodes } from "@/lib/db/hooks";
 import { cn } from "@/lib/utils";
 import { KageBackdrop } from "./backdrop";
 import { KagePoster } from "./poster";
+import { useDragScroll } from "./use-drag-scroll";
 
 interface Ep {
   num: number;
@@ -17,7 +18,7 @@ interface Ep {
   duration: number;
 }
 
-type TabId = "episodes" | "about" | "similar";
+type TabId = "episodes" | "similar";
 
 export function DetailTabs({
   anime,
@@ -26,6 +27,7 @@ export function DetailTabs({
   screenshots,
   episodesAired = 0,
   nextEpisodeAt = null,
+  player = null,
 }: {
   anime: Anime;
   episodes: Ep[];
@@ -33,12 +35,13 @@ export function DetailTabs({
   screenshots?: ShikiScreenshot[];
   episodesAired?: number;
   nextEpisodeAt?: string | null;
+  /** Встроенный плеер — рендерится в табе «Эпизоды» вместо сетки серий. */
+  player?: ReactNode;
 }) {
   const [tab, setTab] = useState<TabId>("episodes");
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "episodes", label: `Эпизоды${anime.eps ? ` (${anime.eps})` : ""}` },
-    { id: "about", label: "Описание" },
+    { id: "episodes", label: "Эпизоды" },
     { id: "similar", label: "Похожее" },
   ];
 
@@ -78,16 +81,16 @@ export function DetailTabs({
         tabIndex={0}
         className="px-[clamp(1rem,4vw,3.5rem)] py-[clamp(1.5rem,2.5vw,2rem)]"
       >
-        {tab === "episodes" && (
-          <Episodes
-            anime={anime}
-            episodes={episodes}
-            screenshots={screenshots}
-            episodesAired={episodesAired}
-            nextEpisodeAt={nextEpisodeAt}
-          />
-        )}
-        {tab === "about" && <About anime={anime} />}
+        {tab === "episodes" &&
+          (player ?? (
+            <Episodes
+              anime={anime}
+              episodes={episodes}
+              screenshots={screenshots}
+              episodesAired={episodesAired}
+              nextEpisodeAt={nextEpisodeAt}
+            />
+          ))}
         {tab === "similar" && <Similar items={similar} />}
       </div>
     </div>
@@ -226,7 +229,7 @@ function Episodes({
         return (
           <Link
             key={ep.num}
-            href={`/anime/${anime.id}/watch?ep=${ep.num}`}
+            href={`/anime/${anime.id}?ep=${ep.num}#player`}
             className="group block"
           >
             {card}
@@ -249,51 +252,32 @@ function formatAirDate(d: Date): string {
   return AIR_DATE_FMT.format(d).replace(",", " ·");
 }
 
-function About({ anime }: { anime: Anime }) {
-  return (
-    <div className="max-w-3xl space-y-4 text-sm leading-relaxed text-text-dim sm:text-base">
-      {anime.synopsis ? (
-        <p>{anime.synopsis}</p>
-      ) : (
-        <p>Описание для этого тайтла пока недоступно.</p>
-      )}
-      {anime.studio && (
-        <p>
-          Студия <span className="text-foreground">{anime.studio}</span>.
-        </p>
-      )}
-      {anime.genres.length > 0 && (
-        <p>
-          Возрастная маркировка:{" "}
-          <strong className="text-foreground">{anime.age || "—"}</strong>.
-          Жанры: {anime.genres.join(", ")}.
-        </p>
-      )}
-    </div>
-  );
-}
-
 function Similar({ items }: { items: Anime[] }) {
+  const { ref, onPointerDown, onDragStart, didDrag } = useDragScroll<HTMLDivElement>();
   if (items.length === 0) {
     return <p className="text-sm text-text-dim">Похожих тайтлов не нашлось.</p>;
   }
   return (
     <div
-      className="grid gap-3 sm:gap-4"
-      style={{
-        gridTemplateColumns:
-          "repeat(auto-fill, minmax(min(50% - 0.375rem, 160px), 1fr))",
-      }}
+      ref={ref}
+      onPointerDown={onPointerDown}
+      onDragStart={onDragStart}
+      className="no-scrollbar -mx-[clamp(1rem,4vw,3.5rem)] cursor-grab select-none overflow-x-auto px-[clamp(1rem,4vw,3.5rem)] active:cursor-grabbing"
     >
-      {items.map((a) => (
-        <Link
-          key={a.id}
-          href={`/anime/${a.id}`}
-          className="transition-transform hover:-translate-y-1"
-        >
-          <KagePoster anime={a} dense />
-        </Link>
-      ))}
+      <div className="flex gap-3 sm:gap-4">
+        {items.map((a) => (
+          <Link
+            key={a.id}
+            href={`/anime/${a.id}`}
+            onClick={(e) => {
+              if (didDrag()) e.preventDefault();
+            }}
+            className="w-[clamp(132px,15vw,200px)] shrink-0 transition-transform hover:-translate-y-1"
+          >
+            <KagePoster anime={a} dense />
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

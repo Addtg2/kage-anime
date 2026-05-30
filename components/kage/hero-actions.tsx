@@ -40,9 +40,9 @@ export function HeroActions({
 
   const watchHref = resumeEp
     ? resumeTime > 0
-      ? `/anime/${anime.id}/watch?ep=${resumeEp}&start=${resumeTime}`
-      : `/anime/${anime.id}/watch?ep=${resumeEp}`
-    : `/anime/${anime.id}/watch`;
+      ? `/anime/${anime.id}?ep=${resumeEp}&start=${resumeTime}#player`
+      : `/anime/${anime.id}?ep=${resumeEp}#player`
+    : `/anime/${anime.id}#player`;
 
   const resumeLabel = resumeEp
     ? resumeTime > 0

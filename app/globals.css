@@ -217,4 +217,25 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* медленный Ken Burns для hero-бэкдропа */
+  .kage-kenburns {
+    transform: scale(1.1);
+    animation: kage-kenburns 26s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes kage-kenburns {
+    from {
+      transform: scale(1.1) translate3d(0, 0, 0);
+    }
+    to {
+      transform: scale(1.18) translate3d(-1.5%, -1.5%, 0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kage-kenburns {
+      animation: none;
+      transform: scale(1.1);
+    }
+  }
 }

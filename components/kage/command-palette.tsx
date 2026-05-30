@@ -191,7 +191,7 @@ export function CommandPalette({
                     key={`his-${anime.id}`}
                     value={`his ${anime.titleRu}`}
                     onSelect={() =>
-                      go(`/anime/${anime.id}/watch?ep=${episode}`)
+                      go(`/anime/${anime.id}?ep=${episode}#player`)
                     }
                   >
                     <Thumb url={anime.posterUrl ?? null} />

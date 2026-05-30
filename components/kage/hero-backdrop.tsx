@@ -2,25 +2,37 @@ import Image from "next/image";
 
 import type { Anime } from "@/lib/anime/types";
 import { KageBackdrop } from "./backdrop";
+import { HeroTrailer } from "./hero-trailer";
 
 /**
  * Бэкдроп для hero: реальный постер тайтла, заполняющий весь блок и размытый
  * до атмосферного фона (как у AniList/Crunchyroll), + многослойные скримы для
  * читаемости текста. Если у тайтла нет постера — fallback на градиент палитры.
+ * Для активного слайда с трейлером поверх постера проигрывается muted-видео.
  */
-export function HeroBackdrop({ anime, priority = true }: { anime: Anime; priority?: boolean }) {
+export function HeroBackdrop({
+  anime,
+  priority = true,
+  trailerUrl,
+  active = false,
+}: {
+  anime: Anime;
+  priority?: boolean;
+  trailerUrl?: string;
+  active?: boolean;
+}) {
   const [, c2] = anime.palette;
   return (
     <>
       {anime.posterUrl ? (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 kage-kenburns">
           <Image
             src={anime.posterUrl}
             alt=""
             fill
             sizes="100vw"
             priority={priority}
-            className="scale-110 object-cover opacity-70 blur-2xl"
+            className="object-cover opacity-70 blur-2xl"
           />
         </div>
       ) : (
@@ -30,6 +42,8 @@ export function HeroBackdrop({ anime, priority = true }: { anime: Anime; priorit
           className="absolute inset-0"
         />
       )}
+
+      {active && trailerUrl && <HeroTrailer url={trailerUrl} />}
 
       {/* лёгкий цветной halo по палитре, чтобы среда выглядела «киношно» */}
       <div
