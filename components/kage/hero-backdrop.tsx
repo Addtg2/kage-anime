@@ -32,6 +32,7 @@ export function HeroBackdrop({
             fill
             sizes="100vw"
             priority={priority}
+            quality={30}
             className="object-cover opacity-70 blur-2xl"
           />
         </div>

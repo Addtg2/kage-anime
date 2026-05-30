@@ -80,6 +80,7 @@ export function HeroPosterCard({
           alt=""
           fill
           sizes="(min-width:1536px) 360px, (min-width:1024px) 280px, 200px"
+          quality={70}
           className="object-cover"
           priority
         />
