@@ -23,10 +23,9 @@ import type { Anime } from "@/lib/anime/types";
 import { useSettingsStore } from "@/lib/store/settings";
 import { useHydrated } from "@/lib/store/use-hydrated";
 import { useWatchedEpisodes } from "@/lib/db/hooks";
-import { SkipOverlay } from "@/components/kage/skip-overlay";
 import { WatchProgressWriter } from "@/components/kage/watch-progress-writer";
 import { withEpisode, withStart, withHiddenSelectors } from "@/lib/kodik/client";
-import type { PlayerTab } from "@/components/kage/player-switcher";
+import type { PlayerTab } from "@/components/kage/player-types";
 
 interface EmbeddedPlayerProps {
   anime: Anime;
@@ -35,7 +34,6 @@ interface EmbeddedPlayerProps {
   episodesAired: number;
   initialEpisode: number;
   startSeconds?: number | null;
-  episodeDuration?: number | null;
 }
 
 /**
@@ -55,11 +53,9 @@ export function EmbeddedPlayer({
   episodesAired,
   initialEpisode,
   startSeconds,
-  episodeDuration,
 }: EmbeddedPlayerProps) {
   const hydrated = useHydrated();
   const preferredPlayer = useSettingsStore((s) => s.preferredPlayer);
-  const skipOpening = useSettingsStore((s) => s.skipOpening);
   const autoNext = useSettingsStore((s) => s.autoNext);
   const savedTranslationId = useSettingsStore(
     (s) => s.translationByAnime[anime.id],
@@ -144,6 +140,32 @@ export function EmbeddedPlayer({
   const baseSrc = activeTranslation?.src ?? current?.src;
   const sourceKey = `${current?.id ?? "none"}-${activeTranslation?.id ?? "default"}`;
 
+  // Авто-переход к следующей вышедшей серии у конца текущей (по времени из
+  // Kodik time_update). Срабатывает один раз на серию, если включено в настройках.
+  // Кнопки пропуска заставки/титров отдаёт сам Kodik (из базы) — свой оверлей не нужен.
+  const autoNextFired = useRef(false);
+  useEffect(() => {
+    autoNextFired.current = false;
+  }, [episode, sourceKey]);
+  useEffect(() => {
+    if (!autoNext) return;
+    const onMessage = (e: MessageEvent) => {
+      const raw = e.data as unknown;
+      if (!raw || typeof raw !== "object") return;
+      const data = raw as { key?: string; value?: { time?: number; duration?: number } };
+      if (data.key !== "kodik_player_time_update") return;
+      const { time, duration } = data.value ?? {};
+      if (typeof time !== "number" || typeof duration !== "number" || duration < 60) return;
+      if (time < duration - 4 || autoNextFired.current) return;
+      if (episode >= Math.min(episodes.length, lastAired)) return;
+      autoNextFired.current = true;
+      setTouched(true);
+      setEpisode((n) => n + 1);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [autoNext, episode, episodes.length, lastAired]);
+
   const iframeSrc = useMemo(() => {
     if (!baseSrc) return undefined;
     let src = withEpisode(baseSrc, episode);
@@ -196,15 +218,6 @@ export function EmbeddedPlayer({
             />
           ) : (
             <UnavailableState />
-          )}
-          {hydrated && playable && (
-            <SkipOverlay
-              key={`overlay-${sourceKey}-${episode}`}
-              episodeDuration={episodeDuration ?? null}
-              nextEpHref={null}
-              skipOpening={skipOpening}
-              autoNext={autoNext}
-            />
           )}
         </div>
 

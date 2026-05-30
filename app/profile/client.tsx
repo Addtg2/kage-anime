@@ -60,7 +60,6 @@ const ImportSchema = z.object({
     preferredPlayer: z.enum(["auto", "kodik", "alloha"]).optional(),
     theme: z.enum(["dark", "oled", "light"]).optional(),
     autoNext: z.boolean().optional(),
-    skipOpening: z.boolean().optional(),
     spoilerFree: z.boolean().optional(),
     translationByAnime: z.record(z.string(), z.number()).optional(),
     episodeSubs: z.record(z.string(), EpisodeSubSchema).optional(),
@@ -87,8 +86,6 @@ export function ProfileClient() {
   const setTheme = useSettingsStore((s) => s.setTheme);
   const autoNext = useSettingsStore((s) => s.autoNext);
   const setAutoNext = useSettingsStore((s) => s.setAutoNext);
-  const skipOpening = useSettingsStore((s) => s.skipOpening);
-  const setSkipOpening = useSettingsStore((s) => s.setSkipOpening);
   const spoilerFree = useSettingsStore((s) => s.spoilerFree);
   const setSpoilerFree = useSettingsStore((s) => s.setSpoilerFree);
   const entries = useLibraryStore((s) => s.entries);
@@ -122,7 +119,6 @@ export function ProfileClient() {
         preferredPlayer: s.preferredPlayer,
         theme: s.theme,
         autoNext: s.autoNext,
-        skipOpening: s.skipOpening,
         spoilerFree: s.spoilerFree,
         translationByAnime: s.translationByAnime,
         episodeSubs: s.episodeSubs,
@@ -206,7 +202,6 @@ export function ProfileClient() {
         if (s.preferredPlayer) store.setPreferredPlayer(s.preferredPlayer);
         if (s.theme) store.setTheme(s.theme);
         if (s.autoNext !== undefined) store.setAutoNext(s.autoNext);
-        if (s.skipOpening !== undefined) store.setSkipOpening(s.skipOpening);
         if (s.spoilerFree !== undefined) store.setSpoilerFree(s.spoilerFree);
         if (s.translationByAnime) useSettingsStore.setState({ translationByAnime: s.translationByAnime });
         if (s.episodeSubs) useSettingsStore.setState({ episodeSubs: s.episodeSubs });
@@ -322,14 +317,8 @@ export function ProfileClient() {
       <Section title="Воспроизведение">
         <div className="flex flex-col gap-2">
           <ToggleRow
-            label="Пропускать опенинг"
-            description="Кнопка появляется через 30 сек после старта серии"
-            checked={hydrated && skipOpening}
-            onChange={setSkipOpening}
-          />
-          <ToggleRow
             label="Автопереход к следующей серии"
-            description="Обратный отсчёт 10 сек перед окончанием эпизода"
+            description="Включать следующую серию после окончания текущей"
             checked={hydrated && autoNext}
             onChange={setAutoNext}
           />

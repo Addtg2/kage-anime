@@ -27,7 +27,7 @@ import { BackButton } from "@/components/kage/back-button";
 import { Comments } from "@/components/kage/comments";
 import { DetailTabs } from "@/components/kage/detail-tabs";
 import { EmbeddedPlayer } from "@/components/kage/embedded-player";
-import { type PlayerTab } from "@/components/kage/player-switcher";
+import { type PlayerTab } from "@/components/kage/player-types";
 import { FadeIn } from "@/components/kage/fade-in";
 import {
   FranchiseRail,
@@ -389,7 +389,6 @@ export default async function AnimePage({
               episodesAired={playerAired}
               initialEpisode={initialEpisode}
               startSeconds={startSeconds}
-              episodeDuration={shiki.duration ?? null}
             />
           ) : null
         }

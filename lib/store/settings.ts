@@ -18,8 +18,6 @@ interface SettingsState {
   setPreferredPlayer: (p: PreferredPlayer) => void;
   autoNext: boolean;
   setAutoNext: (v: boolean) => void;
-  skipOpening: boolean;
-  setSkipOpening: (v: boolean) => void;
   spoilerFree: boolean;
   setSpoilerFree: (v: boolean) => void;
   theme: Theme;
@@ -40,8 +38,6 @@ export const useSettingsStore = create<SettingsState>()(
       setPreferredPlayer: (p) => set({ preferredPlayer: p }),
       autoNext: true,
       setAutoNext: (v) => set({ autoNext: v }),
-      skipOpening: true,
-      setSkipOpening: (v) => set({ skipOpening: v }),
       spoilerFree: false,
       setSpoilerFree: (v) => set({ spoilerFree: v }),
       theme: "dark",
