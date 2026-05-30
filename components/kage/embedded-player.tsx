@@ -56,7 +56,6 @@ export function EmbeddedPlayer({
 }: EmbeddedPlayerProps) {
   const hydrated = useHydrated();
   const preferredPlayer = useSettingsStore((s) => s.preferredPlayer);
-  const autoNext = useSettingsStore((s) => s.autoNext);
   const savedTranslationId = useSettingsStore(
     (s) => s.translationByAnime[anime.id],
   );
@@ -139,32 +138,6 @@ export function EmbeddedPlayer({
 
   const baseSrc = activeTranslation?.src ?? current?.src;
   const sourceKey = `${current?.id ?? "none"}-${activeTranslation?.id ?? "default"}`;
-
-  // Авто-переход к следующей вышедшей серии у конца текущей (по времени из
-  // Kodik time_update). Срабатывает один раз на серию, если включено в настройках.
-  // Кнопки пропуска заставки/титров отдаёт сам Kodik (из базы) — свой оверлей не нужен.
-  const autoNextFired = useRef(false);
-  useEffect(() => {
-    autoNextFired.current = false;
-  }, [episode, sourceKey]);
-  useEffect(() => {
-    if (!autoNext) return;
-    const onMessage = (e: MessageEvent) => {
-      const raw = e.data as unknown;
-      if (!raw || typeof raw !== "object") return;
-      const data = raw as { key?: string; value?: { time?: number; duration?: number } };
-      if (data.key !== "kodik_player_time_update") return;
-      const { time, duration } = data.value ?? {};
-      if (typeof time !== "number" || typeof duration !== "number" || duration < 60) return;
-      if (time < duration - 4 || autoNextFired.current) return;
-      if (episode >= Math.min(episodes.length, lastAired)) return;
-      autoNextFired.current = true;
-      setTouched(true);
-      setEpisode((n) => n + 1);
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [autoNext, episode, episodes.length, lastAired]);
 
   const iframeSrc = useMemo(() => {
     if (!baseSrc) return undefined;

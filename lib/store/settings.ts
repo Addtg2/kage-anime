@@ -16,8 +16,6 @@ export interface EpisodeSubscription {
 interface SettingsState {
   preferredPlayer: PreferredPlayer;
   setPreferredPlayer: (p: PreferredPlayer) => void;
-  autoNext: boolean;
-  setAutoNext: (v: boolean) => void;
   spoilerFree: boolean;
   setSpoilerFree: (v: boolean) => void;
   theme: Theme;
@@ -36,8 +34,6 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       preferredPlayer: "auto",
       setPreferredPlayer: (p) => set({ preferredPlayer: p }),
-      autoNext: true,
-      setAutoNext: (v) => set({ autoNext: v }),
       spoilerFree: false,
       setSpoilerFree: (v) => set({ spoilerFree: v }),
       theme: "dark",
